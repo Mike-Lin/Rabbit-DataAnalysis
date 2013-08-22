@@ -1,0 +1,13 @@
+<component name="ArtifactManager">
+  <artifact type="exploded-war" name="Rabbit-DataAnalysis:war exploded">
+    <output-path>$PROJECT_DIR$/target/Rabbit-DataAnalysis</output-path>
+    <root id="root">
+      <element id="javaee-facet-resources" facet="Rabbit-DataAnalysis/web/Web" />
+      <element id="directory" name="WEB-INF">
+        <element id="directory" name="classes">
+          <element id="module-output" name="Rabbit-DataAnalysis" />
+        </element>
+      </element>
+    </root>
+  </artifact>
+</component>

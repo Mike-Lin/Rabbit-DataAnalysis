@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:tx="http://www.springframework.org/schema/tx" xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:mvc="http://www.springframework.org/schema/mvc"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+       http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.1.xsd
+       http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.1.xsd
+       http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.1.xsd http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc.xsd">
+
+    <!-- DispatcherServlet Context: defines this servlet's request-processing infrastructure -->
+
+    <!-- Scans within the base package of the application for @Components to configure as beans -->
+    <!-- @Controller, @Service, @Configuration, etc. -->
+    <context:component-scan base-package="com.rabbit.pm25.viewcontroller"/>
+    <context:component-scan base-package="com.rabbit.pm25.viewcontroller.dao"/>
+    <context:component-scan base-package="com.rabbit.pm25.viewcontroller.service"/>
+    <!-- Enables the Spring MVC @Controller programming model -->
+    <mvc:annotation-driven/>
+    <context:annotation-config/>
+    <bean class="org.springframework.beans.factory.annotation.AutowiredAnnotationBeanPostProcessor"/>
+
+    <bean class="org.springframework.beans.factory.config.PropertyPlaceholderConfigurer">
+        <property name="locations">
+            <list>
+                <value>classpath:jdbc.properties</value>
+            </list>
+        </property>
+    </bean>
+
+    <!-- 数据源配置 -->
+    <bean id="c3p0DataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource" destroy-method="close">
+        <property name="driverClass" value="com.mysql.jdbc.Driver"/>
+        <property name="jdbcUrl" value="jdbc:mysql://localhost:3306/pm25?useUnicode=true&amp;characterEncoding=UTF-8"/>
+        <property name="user" value="root"/>
+        <property name="password" value="root"/>
+        <!--连接池中保留的最小连接数。-->
+        <property name="minPoolSize" value="2"/>
+        <!--连接池中保留的最大连接数。-->
+        <property name="maxPoolSize" value="100"/>
+        <!--最大空闲时间,60秒内未使用则连接被丢弃。若为0则永不丢弃。-->
+        <property name="maxIdleTime" value="1800"/>
+        <!--当连接池中的连接耗尽的时候c3p0一次同时获取的连接数。-->
+        <property name="acquireIncrement" value="2"/>
+        <property name="maxStatements" value="0"/>
+        <!--初始化时获取的连接数，取值应在minPoolSize与maxPoolSize之间。-->
+        <property name="initialPoolSize" value="2"/>
+        <!--每60秒检查所有连接池中的空闲连接。-->
+        <property name="idleConnectionTestPeriod" value="1800"/>
+        <!--定义在从数据库获取新连接失败后重复尝试的次数。Default: 30 -->
+        <property name="acquireRetryAttempts" value="30"/>
+        <!--
+          获取连接失败将会引起所有等待连接池来获取连接的线程抛出异常。但是数据源仍有效
+          保留，并在下次调用getConnection()的时候继续尝试获取连接。如果设为true，那么在尝试
+          获取连接失败后该数据源将申明已断开并永久关闭。Default: false
+        -->
+        <property name="breakAfterAcquireFailure" value="true"/>
+        <!--
+          因性能消耗大请只在需要的时候使用它。如果设为true那么在每个connection提交的
+           时候都将校验其有效性。建议使用idleConnectionTestPeriod或automaticTestTable
+           等方法来提升连接测试的性能。Default: false
+        -->
+        <property name="testConnectionOnCheckout" value="false"/>
+    </bean>
+
+    <bean id="sessionFactory"
+          class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+        <property name="dataSource" ref="c3p0DataSource"/>
+        <property name="packagesToScan">
+            <list>
+                <value>com.rabbit.pm25.data.domain</value>
+            </list>
+        </property>
+        <property name="hibernateProperties">
+            <props>
+                <!-- 指定数据库的方言  -->
+                <prop key="hibernate.dialect">org.hibernate.dialect.MySQL5Dialect</prop>
+                <!-- 启动应用时,是否根据Hibernate映射自动创建数据表 -->
+                <prop key="hibernate.hbm2ddl.auto">update</prop>
+                <prop key="hibernate.show_sql">true</prop>
+                <prop key="hibernate.format_sql">true</prop>
+                <prop key="hibernate.jdbc.fetch_size">50</prop>
+                <prop key="hibernate.jdbc.batch_size">30</prop>
+                <prop key="hibernate.current_session_context_class">
+                    org.springframework.orm.hibernate4.SpringSessionContext
+                </prop>
+            </props>
+        </property>
+    </bean>
+
+    <bean id="hibernateTemplate" class="org.springframework.orm.hibernate3.HibernateTemplate">
+        <property name="sessionFactory" ref="sessionFactory"></property>
+    </bean>
+
+    <!-- 定义事务管理器 -->
+    <bean id="transactionManager" class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+        <property name="sessionFactory" ref="sessionFactory"/>
+    </bean>
+
+    <!-- 配置事务的传播特性 -->
+    <tx:advice id="txAdvice" transaction-manager="transactionManager">
+        <tx:attributes>
+            <tx:method name="add*" propagation="REQUIRED"/>
+            <tx:method name="save*" propagation="REQUIRED"/>
+            <tx:method name="del*" propagation="REQUIRED"/>
+            <tx:method name="update*" propagation="REQUIRED"/>
+            <tx:method name="insert*" propagation="REQUIRED"/>
+            <tx:method name="batchInsert*" propagation="REQUIRED"/>
+            <!-- hibernate4必须配置为开启事务 否则 getCurrentSession()获取不到 -->
+            <tx:method name="get*" propagation="REQUIRED" read-only="true"/>
+            <tx:method name="count*" propagation="REQUIRED" read-only="true"/>
+            <tx:method name="find*" propagation="REQUIRED" read-only="true"/>
+            <tx:method name="list*" propagation="REQUIRED" read-only="true"/>
+            <tx:method name="*" read-only="true"/>
+
+        </tx:attributes>
+    </tx:advice>
+
+    <!-- 哪些类的哪些方法参与事务  -->
+    <aop:config>
+        <!-- 只对业务逻辑层实施事务 -->
+        <aop:pointcut id="serviceMethods" expression="execution(* com.rabbit.pm25.viewcontroller.service..*.*(..))"/>
+        <aop:advisor advice-ref="txAdvice" pointcut-ref="serviceMethods"/>
+    </aop:config>
+
+    <!-- 定时任务 -->
+    <!-- spring定时任务的配置 -->
+    <bean class="com.rabbit.pm25.viewcontroller.task.MyTime" id="myTime"/>
+
+    <!-- 基础的配置   相关类的注入 -->
+    <bean class="org.springframework.scheduling.quartz.JobDetailBean" id="MyTimeSpringJob">
+        <property name="jobClass" value="com.rabbit.pm25.viewcontroller.task.UpdateTime"/>  <!-- value中配置的是我自己写的UpdateTime类  name就是spring的jobClass -->
+        <property name="jobDataAsMap">            <!-- 当定时任务中需要注入别的bean的时候，就可以在这里注入，我里面输入了一个MyTime类 -->
+            <map>
+                <entry key="myTime" value-ref="myTime"/>
+            </map>
+        </property>
+    </bean>
+    <!-- 相关的时间配置 -->
+    <bean class="org.springframework.scheduling.quartz.SimpleTriggerBean" id="MyTimesimpleTriggerBean">
+        <property name="jobDetail" ref="MyTimeSpringJob"/>   <!-- 给MyTimeSpringJob配置时间信息，name的jobDetail是spring内部需要注入的名字 -->
+        <property name="repeatInterval" value="300000"/>       <!--相隔1000毫秒执行一次 -->
+        <property name="startDelay" value="5000"/>          <!--tomcat或者jboss启动5000毫秒后开始执行任务 -->
+    </bean>
+    <!--
+        当前注释的内容配置的功能很强大，还可以配置星期几，哪一天，那一年，或者那一日的那一秒都是可以配置的
+        当前配置的是:每个周的星期天23：59：50     这个顺序是倒序配置的
+        value中的内容：
+        第6位：的1代表星期天，在国外星期天才是每个周的开始！
+       第5位： *代表所有月的星期天
+       第4位：？代表也没有具体到某日的星期天
+       第3位：23代表23点，注意：采用24小时
+       第2位：59代表分钟
+       第1位：50代表秒
+   <bean class="org.springframework.scheduling.quartz.CronTriggerBean">
+       <property name="jobDetail" ref="MyTimeSpringJob"/>
+        <property name="cronExpression" value="50 59 23 ? * 1"/>
+
+   </bean>
+         -->
+    <!-- ****************启动定时任务***************** -->
+    <bean class="org.springframework.scheduling.quartz.SchedulerFactoryBean">
+        <property name="triggers">
+            <list>
+                <ref bean="MyTimesimpleTriggerBean"/>
+            </list>
+        </property>
+    </bean>
+
+</beans>

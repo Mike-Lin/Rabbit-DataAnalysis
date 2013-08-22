@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="war" name="ViewController:war">
+    <output-path>$PROJECT_DIR$/ViewController/target</output-path>
+    <root id="archive" name="ViewController.war">
+      <element id="artifact" artifact-name="ViewController:war exploded" />
+    </root>
+  </artifact>
+</component>
